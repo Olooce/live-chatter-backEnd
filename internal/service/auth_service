@@ -6,7 +6,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 
+	"live-chatter/internal/repository"
+	"live-chatter/pkg/model"
+	jwtutil "live-chatter/pkg/middleware"
 	"golang.org/x/crypto/bcrypt"
 )
 
