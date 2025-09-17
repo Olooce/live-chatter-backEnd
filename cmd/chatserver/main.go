@@ -2,9 +2,13 @@ package main
 
 import (
 	"fmt"
+	"os"
 
+	"live-chatter/internal/config"
 	"live-chatter/internal/server"
 	"live-chatter/pkg"
+	"live-chatter/pkg/db"
+	"live-chatter/pkg/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,6 +26,11 @@ var (
 func main() {
 	fmt.Println("Gin WebSocket server starting...")
 
+	cfg := loadConfig("config.xml")
+
+	initDatabase(cfg)
+	initAuth(cfg)
+
 	// Start the client manager in a separate goroutine to handle client events concurrently
 	go clientsManager.Start()
 
@@ -38,4 +47,22 @@ func main() {
 	if err := r.Run(":5000"); err != nil {
 		fmt.Println("Error starting server:", err)
 	}
+}
+
+func loadConfig(path string) *config.APIConfig {
+	cfg, err := config.LoadConfig(path)
+	if err != nil {
+
+		fmt.Println("Error loading config:", err)
+		os.Exit(1)
+	}
+	return cfg
+}
+
+func initDatabase(cfg *config.APIConfig) {
+	db.InitDBFromConfig(cfg)
+}
+
+func initAuth(cfg *config.APIConfig) {
+	middleware.InitAuthConfig(cfg)
 }
