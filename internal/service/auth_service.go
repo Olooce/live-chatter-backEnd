@@ -71,13 +71,16 @@ type LoginResponse struct {
 
 // Login function to authenticate user
 func (s *authService) Login(username, authhash string) (*LoginResponse, error) {
-	// Step 1: Retrieve user from database (already stored as SHA-256 hash)
+	// Step 1: Retrieve user from database
 	user, err := s.userRepo.GetUserByEmail(username)
-	if err != nil {
-		return nil, errors.New("user not found")
+	if err != nil || user == nil {
+		user, err = s.userRepo.GetUserByUsername(username)
+		if err != nil || user == nil {
+			return nil, errors.New("user not found")
+		}
 	}
 
-	// Step 2: Concatenate email with stored SHA-256 hashed password
+	// Step 2: Concatenate with stored SHA-256 hashed password
 	concatenatedString := username + "::" + user.Password
 
 	// Step 3: Decode Base64 `authhash` received from frontend
