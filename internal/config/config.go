@@ -3,11 +3,12 @@ package config
 import (
 	"encoding/xml"
 	"fmt"
-	"github.com/joho/godotenv"
 	"io"
 	"log"
 	"os"
 	"sync"
+
+	"github.com/joho/godotenv"
 )
 
 var (
@@ -23,7 +24,6 @@ type APIConfig struct {
 	Authentication AuthenticationConfig `xml:"AUTHENTICATION"`
 	Pagination     PaginationConfig     `xml:"PAGINATION"`
 	DB             DBConfig             `xml:"DB"`
-	ThirdParty     ThirdPartyConfig     `xml:"THIRD_PARTY"`
 }
 
 // ContextConfig holds basic server settings.
@@ -40,12 +40,6 @@ type ContextConfig struct {
 // TrustedProxiesConfig holds a list of trusted proxy IP addresses.
 type TrustedProxiesConfig struct {
 	Proxies []string `xml:"PROXY"`
-}
-
-// ThirdPartyConfig holds external service credentials.
-type ThirdPartyConfig struct {
-	HFToken    string `xml:"HF_TOKEN"`
-	OllamaHost string `xml:"OLLAMA_HOST"`
 }
 
 // AuthenticationConfig holds authentication settings.
@@ -119,7 +113,7 @@ type DBConfig struct {
 
 // DBNames holds the names defined in the DB section.
 type DBNames struct {
-	INKWELL string `xml:"INKWELL,attr"`
+	LIVECHAT string `xml:"LIVECHAT,attr"`
 }
 
 // DBPassword holds password details.

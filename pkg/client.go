@@ -10,9 +10,10 @@ import (
 // Client represents a single WebSocket connection
 // and handles sending and receiving messages.
 type Client struct {
-	ID     string          // Unique identifier for the client
-	Socket *websocket.Conn // WebSocket connection
-	Send   chan []byte     // Channel for outgoing messages
+	ID       string // Unique identifier for the client
+	Username string
+	Socket   *websocket.Conn // WebSocket connection
+	Send     chan []byte     // Channel for outgoing messages
 }
 
 // Read continuously listens for incoming messages from the client.

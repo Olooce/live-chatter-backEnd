@@ -43,9 +43,7 @@ func (ac *AuthController) Register(c *gin.Context) {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}
-}
-		return
-	}
+
 	c.JSON(http.StatusCreated, gin.H{"message": "User registered successfully"})
 }
 

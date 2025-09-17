@@ -20,11 +20,11 @@ const PingInterval = 30 * time.Second
 
 // InitDBFromConfig initializes a connection pool using settings from the config file.
 func InitDBFromConfig(cfg *config.APIConfig) {
-	fmt.Println("\nCONNECTION MANAGER - INKWELL-API-CM")
+	fmt.Println("\nCONNECTION MANAGER - LIVECHAT-CM")
 	fmt.Println("-------------[Creating Connection Pool...]-----------")
 	fmt.Printf(" Database Server       : %s\n", cfg.DB.Server)
 	fmt.Printf(" Database Driver       : %s\n", cfg.DB.Driver)
-	fmt.Printf(" Database Name         : %s\n", cfg.DB.Names.INKWELL)
+	fmt.Printf(" Database Name         : %s\n", cfg.DB.Names.LIVECHAT)
 	fmt.Printf(" Database Username     : %s\n", cfg.DB.Username)
 	fmt.Printf(" Database Port         : %d\n", cfg.DB.Port)
 
@@ -33,7 +33,7 @@ func InitDBFromConfig(cfg *config.APIConfig) {
 		cfg.DB.Host,
 		cfg.DB.Username,
 		cfg.DB.Password.Value,
-		cfg.DB.Names.INKWELL,
+		cfg.DB.Names.LIVECHAT,
 		cfg.DB.Port,
 		cfg.DB.SSLMode,
 		cfg.Context.TimeZone,
