@@ -24,7 +24,13 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		parts := strings.Fields(authHeader)
+		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization header"})
+			c.Abort()
+			return
+		}
+		tokenStr := parts[1]
 		claims, err := ValidateToken(tokenStr, false)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
