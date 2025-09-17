@@ -64,8 +64,8 @@ func (manager *ClientManager) registerClient(client *Client) {
 	// Send welcome message to the new client
 	welcomeMsg := &Message{
 		ID:        generateMessageID(),
-		Type:      "system_message",
-		Content:   "Welcome to Live Chatter! You are now connected.",
+		Type:      "system",
+		Content:   "Welcome to Chatter! You are now connected.",
 		Username:  "System",
 		Timestamp: time.Now(),
 	}
