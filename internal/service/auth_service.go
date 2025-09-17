@@ -6,11 +6,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 
 	"live-chatter/internal/repository"
-	"live-chatter/pkg/model"
 	jwtutil "live-chatter/pkg/middleware"
+	"live-chatter/pkg/model"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -98,7 +98,7 @@ func (s *authService) Login(username, authhash string) (*LoginResponse, error) {
 	user.Password = ""
 
 	// Step 6: Generate access and refresh tokens
-	accessToken, refreshToken, err := utilities.GenerateTokens(user)
+	accessToken, refreshToken, err := jwtutil.GenerateTokens(user)
 	if err != nil {
 		return nil, errors.New("failed to generate tokens")
 	}
@@ -119,7 +119,7 @@ type TokenResponse struct {
 
 // RefreshTokens function to refresh both access and refresh tokens
 func (s *authService) RefreshTokens(refreshToken string) (*TokenResponse, error) {
-	newAccessToken, newRefreshToken, err := utilities.RefreshTokens(refreshToken)
+	newAccessToken, newRefreshToken, err := jwtutil.RefreshTokens(refreshToken)
 	if err != nil {
 		return nil, errors.New("invalid or expired refresh token")
 	}

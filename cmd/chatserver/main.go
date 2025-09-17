@@ -1,8 +1,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"live-chatter/internal/config"
 	"live-chatter/internal/server"
@@ -10,43 +16,78 @@ import (
 	"live-chatter/pkg/db"
 	"live-chatter/pkg/middleware"
 
+	Log "live-chatter/pkg/logger"
+
 	"github.com/gin-gonic/gin"
 )
 
 var (
-	// clientsManager handles all WebSocket clients, registration, unregistration, and broadcasting messages
 	clientsManager = &pkg.ClientManager{
-		Broadcast:  make(chan []byte),          // Channel for broadcasting messages to all clients
-		Register:   make(chan *pkg.Client),     // Channel for registering new clients
-		Unregister: make(chan *pkg.Client),     // Channel for removing disconnected clients
-		Clients:    make(map[*pkg.Client]bool), // Map to keep track of active clients
+		Broadcast:  make(chan []byte),
+		Register:   make(chan *pkg.Client),
+		Unregister: make(chan *pkg.Client),
+		Clients:    make(map[*pkg.Client]bool),
 	}
 )
 
 func main() {
+	Log.SetupLogging("logs")
 	fmt.Println("Gin WebSocket server starting...")
 
 	cfg := loadConfig("config.xml")
-
 	initDatabase(cfg)
 	initAuth(cfg)
 
-	// Start the client manager in a separate goroutine to handle client events concurrently
 	go clientsManager.Start()
 
-	// Create a new Gin router instance
-	r := gin.Default()
-
-	// Define WebSocket endpoint at root path
+	r := initRouter(cfg)
 	r.GET("/", func(c *gin.Context) {
-		// Upgrade the incoming HTTP request to a WebSocket connection
 		server.WebSocket(c.Writer, c.Request, clientsManager)
 	})
 
-	// Start the Gin server on port 5000
-	if err := r.Run(":5000"); err != nil {
-		fmt.Println("Error starting server:", err)
+	runServer(cfg, r)
+}
+
+func runServer(cfg *config.APIConfig, router *gin.Engine) {
+	addr := fmt.Sprintf("%s:%d", cfg.Context.Host, cfg.Context.Port)
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: router,
 	}
+
+	// Start server in a goroutine so it doesn't block
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			Log.Error("Server failed: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	Log.Info("Shutting down server...")
+
+	// Give outstanding requests 5 seconds to complete
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		Log.Error("Server forced to shutdown: %v", err)
+	}
+
+	Log.Info("Server exiting")
+}
+
+func initRouter(cfg *config.APIConfig) *gin.Engine {
+	gin.SetMode(cfg.Context.Mode)
+	router := gin.Default()
+	if err := router.SetTrustedProxies(cfg.Context.TrustedProxies.Proxies); err != nil {
+		Log.Error("Failed to set trusted proxies: %v", err)
+	}
+
+	router.Use(middleware.CORSMiddleware(), middleware.AuthMiddleware(), middleware.RateLimitMiddleware())
+	return router
 }
 
 func loadConfig(path string) *config.APIConfig {
