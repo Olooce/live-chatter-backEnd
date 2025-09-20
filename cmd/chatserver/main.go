@@ -37,8 +37,8 @@ var (
 )
 
 func main() {
-	Log.SetupLogging("logs")
-	fmt.Println("Gin WebSocket server starting...")
+	Log.SetupLogging("logs", true)
+	Log.Info("Gin WebSocket server starting...")
 
 	cfg := loadConfig("config.xml")
 	initDatabase(cfg)
@@ -168,7 +168,7 @@ func initRouter(cfg *config.APIConfig) *gin.Engine {
 func loadConfig(path string) *config.APIConfig {
 	cfg, err := config.LoadConfig(path)
 	if err != nil {
-		fmt.Println("Error loading config:", err)
+		Log.Error("Error loading config:", err)
 		os.Exit(1)
 	}
 	return cfg
