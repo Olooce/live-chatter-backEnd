@@ -11,19 +11,23 @@ import (
 )
 
 var (
-	infoLog  *log.Logger
-	warnLog  *log.Logger
-	errorLog *log.Logger
-	logMutex = &sync.Mutex{}
+	infoLog   *log.Logger
+	warnLog   *log.Logger
+	errorLog  *log.Logger
+	debugLog  *log.Logger
+	logMutex  = &sync.Mutex{}
+	debugMode = true
 
 	infoFile  *os.File
 	warnFile  *os.File
 	errorFile *os.File
+	debugFile *os.File
 )
 
-// Some really great stuff going on here @michaelamimo
+// SetupLogging initializes loggers
+func SetupLogging(logDir string, enableDebug bool) {
+	debugMode = enableDebug
 
-func SetupLogging(logDir string) {
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		log.Fatalf("Failed to create log directory: %v", err)
 	}
@@ -40,7 +44,13 @@ func SetupLogging(logDir string) {
 	warnLog = log.New(warnWriter, "WARNING: ", log.Ldate|log.Ltime)
 	errorLog = log.New(errorWriter, "ERROR: ", log.Ldate|log.Ltime)
 
-	//Override Go's  default log
+	if debugMode {
+		debugFile = openLogFile(filepath.Join(logDir, "debug.log"))
+		debugWriter := io.MultiWriter(os.Stdout, debugFile)
+		debugLog = log.New(debugWriter, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
+	}
+
+	// Override Go's default log
 	log.SetOutput(infoWriter)
 }
 
@@ -49,7 +59,6 @@ func openLogFile(path string) *os.File {
 	if err != nil {
 		log.Fatalf("Failed to open log file: %v", err)
 	}
-
 	return file
 }
 
@@ -75,6 +84,10 @@ func Log(level string, format string, v ...interface{}) {
 		warnLog.Println(logEntry)
 	case "ERROR":
 		errorLog.Println(logEntry)
+	case "DEBUG":
+		if debugMode && debugLog != nil {
+			debugLog.Println(logEntry)
+		}
 	default:
 		infoLog.Println(logEntry)
 	}
@@ -83,18 +96,27 @@ func Log(level string, format string, v ...interface{}) {
 // FlushLogs ensures that all log files flush their buffered data to disk.
 func FlushLogs() {
 	if infoFile != nil {
-		if err := infoFile.Sync(); err != nil {
-			log.Printf("failed to sync infoFile: %v", err)
+		err := infoFile.Sync()
+		if err != nil {
+			return
 		}
 	}
 	if warnFile != nil {
-		if err := warnFile.Sync(); err != nil {
-			log.Printf("failed to sync warnFile: %v", err)
+		err := warnFile.Sync()
+		if err != nil {
+			return
 		}
 	}
 	if errorFile != nil {
-		if err := errorFile.Sync(); err != nil {
-			log.Printf("failed to sync errorFile: %v", err)
+		err := errorFile.Sync()
+		if err != nil {
+			return
+		}
+	}
+	if debugFile != nil {
+		err := debugFile.Sync()
+		if err != nil {
+			return
 		}
 	}
 }
@@ -107,4 +129,7 @@ func Warn(format string, v ...interface{}) {
 }
 func Error(format string, v ...interface{}) {
 	Log("ERROR", format, v...)
+}
+func Debug(format string, v ...interface{}) {
+	Log("DEBUG", format, v...)
 }

@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 
+	Log "live-chatter/pkg/logger"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -74,20 +76,20 @@ func (ac *AuthController) Login(c *gin.Context) {
 		AuthHash string `json:"authhash"`
 	}
 	if err := c.ShouldBindJSON(&creds); err != nil {
-		log.Printf("[Login] Invalid input: %v", err)
+		Log.Error("[Login] Invalid input: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input", "details": err.Error()})
 		return
 	}
-	log.Printf("[Login] Payload: %+v", creds)
+	Log.Debug("[Login] Payload: %+v", creds)
 
 	user, err := ac.AuthService.Login(creds.Email, creds.AuthHash)
 	if err != nil {
-		log.Printf("[Login] Auth failed: %v", err)
+		Log.Error("[Login] Auth failed: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	log.Printf("[Login] Success: %+v", user)
+	Log.Info("[Login] Success: %+v", user)
 	c.JSON(http.StatusOK, user)
 }
 
@@ -96,19 +98,19 @@ func (ac *AuthController) Refresh(c *gin.Context) {
 		RefreshToken string `json:"refresh_token"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("[Refresh] Invalid input: %v", err)
+		Log.Error("[Refresh] Invalid input: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input", "details": err.Error()})
 		return
 	}
-	log.Printf("[Refresh] Payload: %+v", req)
+	Log.Debug("[Refresh] Payload: %+v", req)
 
 	newTokens, err := ac.AuthService.RefreshTokens(req.RefreshToken)
 	if err != nil {
-		log.Printf("[Refresh] Token refresh failed: %v", err)
+		Log.Error("[Refresh] Token refresh failed: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	log.Printf("[Refresh] Success: %+v", newTokens)
+	Log.Info("[Refresh] Success: %+v", newTokens)
 	c.JSON(http.StatusOK, newTokens)
 }

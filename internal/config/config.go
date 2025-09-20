@@ -4,9 +4,10 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"sync"
+
+	Log "live-chatter/pkg/logger"
 
 	"github.com/joho/godotenv"
 )
@@ -136,7 +137,7 @@ func LoadConfig(xmlPath string) (*APIConfig, error) {
 		if err == nil {
 			defer func(f *os.File) {
 				if err := f.Close(); err != nil {
-					log.Printf("failed to close file: %v", err)
+					Log.Error("failed to close file: %v", err)
 				}
 			}(f)
 
@@ -151,7 +152,7 @@ func LoadConfig(xmlPath string) (*APIConfig, error) {
 		}
 
 		// If XML file is not found, try loading from .env
-		fmt.Println("Config file not found, attempting to load from environment...")
+		Log.Warn("Config file not found, attempting to load from environment...")
 
 		_ = godotenv.Load() // Load .env file if present
 		xmlConfig := os.Getenv("CONFIG_XML")
