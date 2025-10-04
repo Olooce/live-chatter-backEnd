@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"live-chatter/pkg"
 	"time"
 
 	"live-chatter/internal/repository"
@@ -32,16 +33,22 @@ type ChatService interface {
 }
 
 type chatService struct {
-	messageRepo repository.MessageRepository
-	roomRepo    repository.RoomRepository
-	userRepo    repository.UserRepository
+	messageRepo   repository.MessageRepository
+	roomRepo      repository.RoomRepository
+	userRepo      repository.UserRepository
+	clientManager *pkg.ClientManager
 }
 
-func NewChatService(messageRepo repository.MessageRepository, roomRepo repository.RoomRepository, userRepo repository.UserRepository) ChatService {
+func NewChatService(messageRepo repository.MessageRepository,
+	roomRepo repository.RoomRepository,
+	userRepo repository.UserRepository,
+	clientManager *pkg.ClientManager) ChatService {
+
 	return &chatService{
-		messageRepo: messageRepo,
-		roomRepo:    roomRepo,
-		userRepo:    userRepo,
+		messageRepo:   messageRepo,
+		roomRepo:      roomRepo,
+		userRepo:      userRepo,
+		clientManager: clientManager,
 	}
 }
 
@@ -98,30 +105,29 @@ func (s *chatService) GetUserRooms(userID uint) ([]model.Room, error) {
 
 // JoinRoom adds a user to a room
 func (s *chatService) JoinRoom(roomID string, userID uint) error {
-	// Check if room exists
 	room, err := s.roomRepo.GetRoomByID(roomID)
 	if err != nil {
-		return errors.New("room not found")
+		return err
 	}
-
 	if room == nil {
 		return errors.New("room not found")
 	}
 
-	// Check if user is already in the room
-	isInRoom, err := s.roomRepo.IsUserInRoom(roomID, userID)
-	if err != nil {
-		return fmt.Errorf("failed to check room membership: %v", err)
-	}
-
-	if isInRoom {
-		return errors.New("user already in room")
-	}
-
-	// Add user to room
 	err = s.roomRepo.AddUserToRoom(roomID, userID, "member")
 	if err != nil {
-		return fmt.Errorf("failed to join room: %v", err)
+		return err
+	}
+
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil {
+		return err
+	}
+
+	// Sync with WebSocket client manager
+	if s.clientManager != nil {
+		if client, exists := s.clientManager.UserClients[user.Username]; exists {
+			s.clientManager.AddClientToRoom(client, roomID)
+		}
 	}
 
 	return nil
@@ -147,6 +153,18 @@ func (s *chatService) LeaveRoom(roomID string, userID uint) error {
 
 	if !isInRoom {
 		return errors.New("user is not in this room")
+	}
+
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil {
+		return err
+	}
+
+	// Sync with WebSocket client manager first
+	if s.clientManager != nil {
+		if client, exists := s.clientManager.UserClients[user.Username]; exists {
+			s.clientManager.RemoveClientFromRoom(client, roomID)
+		}
 	}
 
 	// Remove user from room
