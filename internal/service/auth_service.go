@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-
 	"live-chatter/internal/repository"
 	jwtutil "live-chatter/pkg/middleware"
 	"live-chatter/pkg/model"

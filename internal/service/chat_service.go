@@ -13,7 +13,6 @@ import (
 )
 
 type ChatService interface {
-	// Room management
 	CreateRoom(room *model.Room) (*model.Room, error)
 	GetAllRooms() ([]model.Room, error)
 	GetRoomByID(roomID string) (*model.Room, error)
@@ -21,12 +20,10 @@ type ChatService interface {
 	JoinRoom(roomID string, userID uint) error
 	LeaveRoom(roomID string, userID uint) error
 
-	// Message management
 	SaveMessage(message *model.Message) (*model.Message, error)
 	GetRoomMessages(roomID string, limit, offset int, before *time.Time) ([]model.Message, error)
 	SearchMessages(query, roomID string, limit int) ([]model.Message, error)
 
-	// User management
 	GetOnlineUsers() ([]model.User, error)
 	UpdateUserStatus(userID uint, status string) error
 	GetUserByUsername(username string) (*model.User, error)
@@ -54,32 +51,26 @@ func NewChatService(messageRepo repository.MessageRepository,
 
 // CreateRoom creates a new chat room
 func (s *chatService) CreateRoom(room *model.Room) (*model.Room, error) {
-	// Generate UUID for room ID
 	room.ID = uuid.New().String()
 
-	// Validate room name
 	if room.Name == "" {
 		return nil, errors.New("room name cannot be empty")
 	}
 
-	// Check if room name already exists
 	existingRoom, _ := s.roomRepo.GetRoomByName(room.Name)
 	if existingRoom != nil {
 		return nil, errors.New("room name already exists")
 	}
 
-	// Set default type if not provided
 	if room.Type == "" {
 		room.Type = "public"
 	}
 
-	// Create the room
 	err := s.roomRepo.CreateRoom(room)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create room: %v", err)
 	}
 
-	// Automatically join the creator to the room
 	err = s.roomRepo.AddUserToRoom(room.ID, room.CreatedBy, "admin")
 	if err != nil {
 		return nil, fmt.Errorf("failed to add creator to room: %v", err)
@@ -135,7 +126,6 @@ func (s *chatService) JoinRoom(roomID string, userID uint) error {
 
 // LeaveRoom removes a user from a room
 func (s *chatService) LeaveRoom(roomID string, userID uint) error {
-	// Check if room exists
 	room, err := s.roomRepo.GetRoomByID(roomID)
 	if err != nil {
 		return errors.New("room not found")
@@ -145,7 +135,6 @@ func (s *chatService) LeaveRoom(roomID string, userID uint) error {
 		return errors.New("room not found")
 	}
 
-	// Check if user is in the room
 	isInRoom, err := s.roomRepo.IsUserInRoom(roomID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to check room membership: %v", err)
@@ -181,18 +170,15 @@ func (s *chatService) GetOnlineUsers() ([]model.User, error) {
 }
 
 func (s *chatService) SaveMessage(message *model.Message) (*model.Message, error) {
-	// Validate message content
 	if message.Content == "" {
 		return nil, errors.New("message content cannot be empty")
 	}
 
-	// Validate room exists
 	room, err := s.roomRepo.GetRoomByID(message.RoomID)
 	if err != nil || room == nil {
 		return nil, errors.New("room not found")
 	}
 
-	// Check if user is in the room
 	isInRoom, err := s.roomRepo.IsUserInRoom(message.RoomID, message.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check room membership: %v", err)
@@ -201,10 +187,8 @@ func (s *chatService) SaveMessage(message *model.Message) (*model.Message, error
 		return nil, errors.New("user is not in this room")
 	}
 
-	// Set message timestamp
 	message.CreatedAt = time.Now()
 
-	// Save message
 	err = s.messageRepo.CreateMessage(message)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save message: %v", err)
@@ -214,13 +198,11 @@ func (s *chatService) SaveMessage(message *model.Message) (*model.Message, error
 }
 
 func (s *chatService) GetRoomMessages(roomID string, limit, offset int, before *time.Time) ([]model.Message, error) {
-	// Validate room exists
 	room, err := s.roomRepo.GetRoomByID(roomID)
 	if err != nil || room == nil {
 		return nil, errors.New("room not found")
 	}
 
-	// Get messages
 	messages, err := s.messageRepo.GetMessagesByRoomID(roomID, limit, offset, before)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get messages: %v", err)
@@ -230,7 +212,6 @@ func (s *chatService) GetRoomMessages(roomID string, limit, offset int, before *
 }
 
 func (s *chatService) SearchMessages(query, roomID string, limit int) ([]model.Message, error) {
-	// Validate query
 	if query == "" {
 		return nil, errors.New("search query cannot be empty")
 	}
