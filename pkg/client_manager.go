@@ -74,7 +74,7 @@ func (manager *ClientManager) registerClient(client *Client) {
 	// Notify other users about the new connection
 	notificationMsg := &Message{
 		ID:        generateMessageID(),
-		Type:      "user_connected",
+		Type:      "system",
 		Content:   client.User.Username + " joined the chat",
 		UserID:    client.User.ID,
 		Username:  client.User.Username,
@@ -114,7 +114,7 @@ func (manager *ClientManager) unregisterClient(client *Client) {
 		// Notify other users about the disconnection
 		notificationMsg := &Message{
 			ID:        generateMessageID(),
-			Type:      "user_disconnected",
+			Type:      "system",
 			Content:   client.User.Username + " left the chat",
 			UserID:    client.User.ID,
 			Username:  client.User.Username,

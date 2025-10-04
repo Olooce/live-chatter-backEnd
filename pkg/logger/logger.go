@@ -16,7 +16,7 @@ var (
 	errorLog  *log.Logger
 	debugLog  *log.Logger
 	logMutex  = &sync.Mutex{}
-	debugMode = true
+	debugMode = false
 
 	infoFile  *os.File
 	warnFile  *os.File
