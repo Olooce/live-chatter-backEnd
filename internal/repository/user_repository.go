@@ -12,9 +12,16 @@ type UserRepository interface {
 	GetOnlineUsers() ([]model.User, error)
 	UpdateUserStatus(userID uint, status string) error
 	GetUserByUsername(username string) (*model.User, error)
+	GetUserByID(id uint) (*model.User, error)
 }
 
 type userRepository struct{}
+
+func (r *userRepository) GetUserByID(id uint) (*model.User, error) {
+	var user model.User
+	err := db.GetDB().Where("id = ?", id).First(&user).Error
+	return &user, err
+}
 
 func NewUserRepository() UserRepository {
 	return &userRepository{}
