@@ -1,5 +1,7 @@
 package db
 
+//WORST CM EVER. ( XD )Interesting waste of time though
+
 import (
 	"context"
 	"database/sql"
@@ -100,6 +102,14 @@ func InitDBFromConfig(cfg *config.APIConfig) error {
 	sqlDB.SetConnMaxLifetime(time.Duration(cfg.DB.Pool.ConnMaxLifetime) * time.Second)
 
 	debugLog("InitDBFromConfig", "Connection pool configured successfully")
+
+	//Pre-warm connections
+	for i := 0; i < dbConfig.DB.Pool.MaxIdleConns; i++ {
+		go func(db *gorm.DB) {
+			sqlDB, _ := db.DB()
+			_ = sqlDB.Ping()
+		}(newConn)
+	}
 
 	debugLog("InitDBFromConfig", "Performing initial health check (ping)")
 	pingStart := time.Now()
