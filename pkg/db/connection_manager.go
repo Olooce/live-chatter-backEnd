@@ -20,7 +20,7 @@ const PingInterval = 30 * time.Second
 
 // InitDBFromConfig initializes a connection pool using settings from the config file.
 func InitDBFromConfig(cfg *config.APIConfig) {
-	fmt.Println("\nCONNECTION MANAGER - LIVECHAT-CM")
+	fmt.Println("\nCONNECTION MANAGER - CHATTER_SERVER-CM")
 	fmt.Println("-------------[Creating Connection Pool...]-----------")
 	fmt.Printf(" Database Server       : %s\n", cfg.DB.Server)
 	fmt.Printf(" Database Driver       : %s\n", cfg.DB.Driver)

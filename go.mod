@@ -5,10 +5,12 @@ go 1.24.0
 toolchain go1.24.7
 
 require (
+	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
 	github.com/gin-gonic/gin v1.10.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
+	golang.org/x/term v0.30.0
 	golang.org/x/time v0.13.0
 	gorm.io/gorm v1.25.10
 )
