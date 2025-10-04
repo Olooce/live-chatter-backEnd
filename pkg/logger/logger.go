@@ -47,7 +47,7 @@ func SetupLogging(logDir string, enableDebug bool) {
 	if debugMode {
 		debugFile = openLogFile(filepath.Join(logDir, "debug.log"))
 		debugWriter := io.MultiWriter(os.Stdout, debugFile)
-		debugLog = log.New(debugWriter, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
+		debugLog = log.New(debugWriter, "DEBUG: ", log.Ldate|log.Ltime)
 	}
 
 	// Override Go's default log
@@ -62,12 +62,24 @@ func openLogFile(path string) *os.File {
 	return file
 }
 
-func getCallerInfo() string {
-	pc, _, _, ok := runtime.Caller(3)
+func getFuncName(skip int) string {
+	pc, _, _, ok := runtime.Caller(skip)
 	if !ok {
 		return "unknown"
 	}
-	return runtime.FuncForPC(pc).Name()
+	fn := runtime.FuncForPC(pc)
+	if fn == nil {
+		return "unknown"
+	}
+	return filepath.Base(fn.Name())
+}
+
+func getFileLine(skip int) string {
+	_, file, line, ok := runtime.Caller(skip)
+	if !ok {
+		return "unknown:0"
+	}
+	return fmt.Sprintf("%s:%d", filepath.Base(file), line)
 }
 
 func Log(level string, format string, v ...interface{}) {
@@ -75,7 +87,13 @@ func Log(level string, format string, v ...interface{}) {
 	defer logMutex.Unlock()
 
 	message := fmt.Sprintf(format, v...)
-	logEntry := fmt.Sprintf("[%s]: %s", getCallerInfo(), message)
+	caller := getFuncName(3)
+
+	if level == "DEBUG" && debugMode {
+		caller = fmt.Sprintf("%s %s", caller, getFileLine(3))
+	}
+
+	logEntry := fmt.Sprintf("[%s] %s", caller, message)
 
 	switch level {
 	case "INFO":
@@ -85,7 +103,7 @@ func Log(level string, format string, v ...interface{}) {
 	case "ERROR":
 		errorLog.Println(logEntry)
 	case "DEBUG":
-		if debugMode && debugLog != nil {
+		if debugLog != nil && debugMode {
 			debugLog.Println(logEntry)
 		}
 	default:
@@ -131,5 +149,7 @@ func Error(format string, v ...interface{}) {
 	Log("ERROR", format, v...)
 }
 func Debug(format string, v ...interface{}) {
-	Log("DEBUG", format, v...)
+	if debugMode {
+		Log("DEBUG", format, v...)
+	}
 }
