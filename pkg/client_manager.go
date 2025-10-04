@@ -20,7 +20,9 @@ type ClientManager struct {
 	UserClients map[string]*Client          // Map of usernames to clients (for private messages)
 	mu          sync.RWMutex                // for thread safety
 
-	RoomRepo repository.RoomRepository
+	RoomRepo    repository.RoomRepository
+	MessageRepo repository.MessageRepository
+	UserRepo    repository.UserRepository
 }
 
 // BroadcastMessage represents different types of broadcast operations
@@ -77,7 +79,7 @@ func (manager *ClientManager) registerClient(client *Client) {
 				client.Rooms = make(map[string]bool)
 			}
 			client.Rooms[room.ID] = true
-			Log.Info("Restored user %s to room %s from DB", client.User.Username, room.ID)
+			Log.Debug("Restored user %s to room %s from DB", client.User.Username, room.ID)
 		}
 	}
 
@@ -131,7 +133,7 @@ func (manager *ClientManager) unregisterClient(client *Client) {
 			}
 		}
 
-		Log.Info("User %s disconnected (Total connections: %d)",
+		Log.Debug("User %s disconnected (Total connections: %d)",
 			client.User.Username, len(manager.Clients))
 
 		// Notify other users about the disconnection
@@ -265,7 +267,7 @@ func (manager *ClientManager) sendPrivateMessage(message *Message, targetUsernam
 
 	select {
 	case targetClient.Send <- data:
-		Log.Info("Private message sent from %s to %s", message.Username, targetUsername)
+		Log.Debug("Private message sent from %s to %s", message.Username, targetUsername)
 	default:
 		Log.Warn("Target client %s not receiving private message, cleaning up", targetUsername)
 		manager.cleanupClient(targetClient)
