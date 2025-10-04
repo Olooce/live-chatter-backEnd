@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"live-chatter/internal/config"
 	"live-chatter/pkg/model"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // Secret keys and expiration times from config
