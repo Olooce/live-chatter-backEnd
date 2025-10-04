@@ -3,7 +3,9 @@
 
 **LiveChatter** is a learning project to explore real-time chat with Go, Gin, WebSockets, and GORM. It demonstrates sending and receiving messages in real-time, connection management, and basic logging.
 
-> Messages are stored in plain text — this project is **for learning purposes only** and not secure for production.
+> Messages are stored in plain text - this project is **for learning purposes only** and not secure for production.
+> 
+> Exhibits poor connection management, maxing out at just over 111K database operations per second - a suboptimal performance for a Go application.
 
 **Tech stack:**
 
