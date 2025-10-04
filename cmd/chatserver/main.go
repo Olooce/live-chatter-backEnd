@@ -184,6 +184,11 @@ func runServer(cfg *config.APIConfig, router *gin.Engine) {
 	<-quit
 	Log.Info("Shutting down server...")
 
+	err := db.CloseDB()
+	if err != nil {
+		Log.Warn("Failed to close DB: %v", err)
+	}
+
 	// Give outstanding requests 30 seconds to complete
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

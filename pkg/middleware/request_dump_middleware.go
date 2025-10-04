@@ -3,7 +3,6 @@ package middleware
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	Log "live-chatter/pkg/logger"
 
 	"github.com/gin-gonic/gin"
@@ -15,9 +14,9 @@ func RequestDumpMiddleware() gin.HandlerFunc {
 		if c.Request.Body != nil {
 			bodyBytes, _ = io.ReadAll(c.Request.Body)
 		}
-		c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
-		Log.Debug(
+		Log.Info(
 			"[Request]\n"+
 				"\tMethod: %s\n"+
 				"\tURL: %s\n"+
