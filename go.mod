@@ -12,6 +12,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	golang.org/x/term v0.30.0
 	golang.org/x/time v0.13.0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gorm.io/gorm v1.25.10
 )
 

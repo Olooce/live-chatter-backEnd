@@ -198,7 +198,6 @@ func runServer(cfg *config.APIConfig, router *gin.Engine) {
 	}
 
 	Log.Info("Server exiting")
-	Log.FlushLogs()
 }
 
 func initRouter(cfg *config.APIConfig) *gin.Engine {
@@ -238,7 +237,11 @@ func loadConfig(path string) *config.APIConfig {
 }
 
 func initDatabase(cfg *config.APIConfig) {
-	db.InitDBFromConfig(cfg)
+	err := db.InitDBFromConfig(cfg)
+	if err != nil {
+		Log.Error("Error initializing DB: %v", err)
+		return
+	}
 }
 
 func initAuth(cfg *config.APIConfig) {
