@@ -25,17 +25,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var (
-	clientsManager = &pkg.ClientManager{
-		Broadcast:   make(chan pkg.BroadcastMessage),
-		Register:    make(chan *pkg.Client),
-		Unregister:  make(chan *pkg.Client),
-		Clients:     make(map[*pkg.Client]bool),
-		Rooms:       make(map[string]map[*pkg.Client]bool),
-		UserClients: make(map[string]*pkg.Client),
-	}
-)
-
 func main() {
 	Log.SetupLogging("logs", true)
 	Log.Info("Gin WebSocket server starting...")
@@ -50,10 +39,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	roomRepo := repository.NewRoomRepository()
+
+	clientsManager := &pkg.ClientManager{
+		Broadcast:   make(chan pkg.BroadcastMessage),
+		Register:    make(chan *pkg.Client),
+		Unregister:  make(chan *pkg.Client),
+		Clients:     make(map[*pkg.Client]bool),
+		Rooms:       make(map[string]map[*pkg.Client]bool),
+		UserClients: make(map[string]*pkg.Client),
+		RoomRepo:    roomRepo,
+	}
+
 	go clientsManager.Start()
 
 	r := initRouter(cfg)
-	setupRoutes(r)
+	setupRoutes(r, clientsManager)
 
 	runServer(cfg, r)
 }
@@ -63,17 +64,19 @@ func autoMigrate() error {
 		&model.User{},
 		&model.Room{},
 		&model.Message{},
-	)
+		&model.UserRoom{},
+		&model.PrivateMessage{},
+		&model.UserSession{},
+		&model.ActivityLog{})
 }
 
-func setupRoutes(router *gin.Engine) {
-	// Initialize repositories and services
+func setupRoutes(router *gin.Engine, clientsManager *pkg.ClientManager) {
 	userRepo := repository.NewUserRepository()
 	roomRepo := repository.NewRoomRepository()
 	messageRepo := repository.NewMessageRepository()
 
 	authService := service.NewAuthService(userRepo)
-	chatService := service.NewChatService(messageRepo, roomRepo, userRepo)
+	chatService := service.NewChatService(messageRepo, roomRepo, userRepo, clientsManager)
 
 	authController := controller.NewAuthController(authService)
 	chatController := controller.NewChatController(chatService)

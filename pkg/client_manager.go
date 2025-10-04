@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"encoding/json"
+	"live-chatter/internal/repository"
 	"sync"
 	"time"
 
@@ -18,6 +19,8 @@ type ClientManager struct {
 	Rooms       map[string]map[*Client]bool // Map of rooms to clients
 	UserClients map[string]*Client          // Map of usernames to clients (for private messages)
 	mu          sync.RWMutex                // for thread safety
+
+	RoomRepo repository.RoomRepository
 }
 
 // BroadcastMessage represents different types of broadcast operations
@@ -50,15 +53,33 @@ func (manager *ClientManager) Start() {
 
 // registerClient adds a new client to the manager
 func (manager *ClientManager) registerClient(client *Client) {
-	// Check if user is already connected and disconnect old connection
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
 	if existingClient, exists := manager.UserClients[client.User.Username]; exists {
 		Log.Info("User %s reconnecting, closing old connection", client.User.Username)
 		manager.forceDisconnectClient(existingClient)
 	}
 
-	// Add client to active clients
 	manager.Clients[client] = true
 	manager.UserClients[client.User.Username] = client
+
+	dbRooms, err := manager.RoomRepo.GetUserRooms(client.User.ID)
+	if err != nil {
+		Log.Error("Failed to load rooms for user %s: %v", client.User.Username, err)
+	} else {
+		for _, room := range dbRooms {
+			if manager.Rooms[room.ID] == nil {
+				manager.Rooms[room.ID] = make(map[*Client]bool)
+			}
+			manager.Rooms[room.ID][client] = true
+			if client.Rooms == nil {
+				client.Rooms = make(map[string]bool)
+			}
+			client.Rooms[room.ID] = true
+			Log.Info("Restored user %s to room %s from DB", client.User.Username, room.ID)
+		}
+	}
 
 	Log.Info("User %s connected (Total connections: %d)",
 		client.User.Username, len(manager.Clients))
