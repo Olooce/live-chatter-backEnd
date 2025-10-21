@@ -5,7 +5,6 @@ import (
 	"io"
 	"live-chatter/internal/service"
 	"live-chatter/pkg/model"
-	"log"
 	"net/http"
 
 	Log "live-chatter/pkg/logger"
@@ -32,25 +31,22 @@ type registerRequest struct {
 func (ac *AuthController) Register(c *gin.Context) {
 	var req registerRequest
 
-	// Read raw body once
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		log.Printf("[Register] Failed to read body: %v", err)
+		Log.Error("[Register] Failed to read body: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input", "details": err.Error()})
 		return
 	}
-	log.Printf("[Register] Raw payload: %s", string(body))
+	Log.Debug("[Register] Raw payload: %s", string(body))
 
-	// Recreate body for binding
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
 
-	// Bind into struct
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("[Register] Binding into struct failed: %v", err)
+		Log.Error("[Register] Binding into struct failed: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input", "details": err.Error()})
 		return
 	}
-	log.Printf("[Register] Parsed request: %+v", req)
+	Log.Debug("[Register] Parsed request: %+v", req)
 
 	user := model.User{
 		Username:  req.Username,
@@ -61,12 +57,12 @@ func (ac *AuthController) Register(c *gin.Context) {
 	}
 
 	if err := ac.AuthService.Register(&user); err != nil {
-		log.Printf("[Register] Service error: %v", err)
+		Log.Error("[Register] Service error: %v", err)
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}
 
-	log.Printf("[Register] Success: user %s registered", user.Username)
+	Log.Info("[Register] Success: user %s registered", user.Username)
 	c.JSON(http.StatusCreated, gin.H{"message": "User registered successfully"})
 }
 

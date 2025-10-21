@@ -2,6 +2,8 @@ package pkg
 
 import (
 	"encoding/json"
+	"live-chatter/internal/repository"
+	"sync"
 	"time"
 
 	Log "live-chatter/pkg/logger"
@@ -16,6 +18,11 @@ type ClientManager struct {
 	Unregister  chan *Client                // Channel for removing disconnected clients
 	Rooms       map[string]map[*Client]bool // Map of rooms to clients
 	UserClients map[string]*Client          // Map of usernames to clients (for private messages)
+	mu          sync.RWMutex                // for thread safety
+
+	RoomRepo    repository.RoomRepository
+	MessageRepo repository.MessageRepository
+	UserRepo    repository.UserRepository
 }
 
 // BroadcastMessage represents different types of broadcast operations
@@ -48,15 +55,33 @@ func (manager *ClientManager) Start() {
 
 // registerClient adds a new client to the manager
 func (manager *ClientManager) registerClient(client *Client) {
-	// Check if user is already connected and disconnect old connection
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
 	if existingClient, exists := manager.UserClients[client.User.Username]; exists {
 		Log.Info("User %s reconnecting, closing old connection", client.User.Username)
 		manager.forceDisconnectClient(existingClient)
 	}
 
-	// Add client to active clients
 	manager.Clients[client] = true
 	manager.UserClients[client.User.Username] = client
+
+	dbRooms, err := manager.RoomRepo.GetUserRooms(client.User.ID)
+	if err != nil {
+		Log.Error("Failed to load rooms for user %s: %v", client.User.Username, err)
+	} else {
+		for _, room := range dbRooms {
+			if manager.Rooms[room.ID] == nil {
+				manager.Rooms[room.ID] = make(map[*Client]bool)
+			}
+			manager.Rooms[room.ID][client] = true
+			if client.Rooms == nil {
+				client.Rooms = make(map[string]bool)
+			}
+			client.Rooms[room.ID] = true
+			Log.Debug("Restored user %s to room %s from DB", client.User.Username, room.ID)
+		}
+	}
 
 	Log.Info("User %s connected (Total connections: %d)",
 		client.User.Username, len(manager.Clients))
@@ -108,7 +133,7 @@ func (manager *ClientManager) unregisterClient(client *Client) {
 			}
 		}
 
-		Log.Info("User %s disconnected (Total connections: %d)",
+		Log.Debug("User %s disconnected (Total connections: %d)",
 			client.User.Username, len(manager.Clients))
 
 		// Notify other users about the disconnection
@@ -129,7 +154,11 @@ func (manager *ClientManager) unregisterClient(client *Client) {
 // forceDisconnectClient forcefully disconnects a client
 func (manager *ClientManager) forceDisconnectClient(client *Client) {
 	if client.Socket != nil {
-		client.Socket.Close()
+		err := client.Socket.Close()
+		if err != nil {
+			Log.Error("Error closing socket: %s", err)
+			return
+		}
 	}
 	manager.unregisterClient(client)
 }
@@ -238,7 +267,7 @@ func (manager *ClientManager) sendPrivateMessage(message *Message, targetUsernam
 
 	select {
 	case targetClient.Send <- data:
-		Log.Info("Private message sent from %s to %s", message.Username, targetUsername)
+		Log.Debug("Private message sent from %s to %s", message.Username, targetUsername)
 	default:
 		Log.Warn("Target client %s not receiving private message, cleaning up", targetUsername)
 		manager.cleanupClient(targetClient)
@@ -320,4 +349,52 @@ func (manager *ClientManager) GetRoomCount() int {
 func (manager *ClientManager) IsUserOnline(username string) bool {
 	_, exists := manager.UserClients[username]
 	return exists
+}
+
+func (manager *ClientManager) AddClientToRoom(client *Client, roomID string) {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	if manager.Rooms[roomID] == nil {
+		manager.Rooms[roomID] = make(map[*Client]bool)
+	}
+
+	manager.Rooms[roomID][client] = true
+
+	if client.Rooms == nil {
+		client.Rooms = make(map[string]bool)
+	}
+	client.Rooms[roomID] = true
+
+	Log.Info("User %s added to room %s", client.User.Username, roomID)
+}
+
+// RemoveClientFromRoom removes a client from a room in the ClientManager
+func (manager *ClientManager) RemoveClientFromRoom(client *Client, roomID string) {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	if manager.Rooms[roomID] != nil {
+		delete(manager.Rooms[roomID], client)
+		if len(manager.Rooms[roomID]) == 0 {
+			delete(manager.Rooms, roomID)
+		}
+	}
+
+	if client.Rooms != nil {
+		delete(client.Rooms, roomID)
+	}
+
+	Log.Info("User %s removed from room %s", client.User.Username, roomID)
+}
+
+// IsClientInRoom checks if a client is in a specific room
+func (manager *ClientManager) IsClientInRoom(client *Client, roomID string) bool {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	if manager.Rooms[roomID] == nil {
+		return false
+	}
+	return manager.Rooms[roomID][client]
 }

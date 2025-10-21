@@ -10,6 +10,7 @@ import (
 
 type MessageRepository interface {
 	CreateMessage(message *model.Message) error
+	CreatePrivateMessage(message *model.PrivateMessage) error
 	GetMessagesByRoomID(roomID string, limit, offset int, before *time.Time) ([]model.Message, error)
 	SearchMessages(query, roomID string, limit int) ([]model.Message, error)
 	GetMessageByID(messageID uint) (*model.Message, error)
@@ -27,6 +28,10 @@ func NewMessageRepository() MessageRepository {
 }
 
 func (r *messageRepository) CreateMessage(message *model.Message) error {
+	return r.db.Create(message).Error
+}
+
+func (r *messageRepository) CreatePrivateMessage(message *model.PrivateMessage) error {
 	return r.db.Create(message).Error
 }
 
@@ -50,7 +55,7 @@ func (r *messageRepository) GetMessagesByRoomID(roomID string, limit, offset int
 func (r *messageRepository) SearchMessages(query, roomID string, limit int) ([]model.Message, error) {
 	var messages []model.Message
 
-	dbQuery := r.db.Preload("User").Where("content ILIKE ? AND deleted_at IS NULL", "%"+query+"%")
+	dbQuery := r.db.Preload("User").Where("content LIKE ? AND deleted_at IS NULL", "%"+query+"%")
 
 	if roomID != "" {
 		dbQuery = dbQuery.Where("room_id = ?", roomID)

@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"live-chatter/pkg/model"
@@ -106,21 +107,34 @@ func (c *Client) handleChatMessage(msg IncomingMessage, clientsManager *ClientMa
 	}
 
 	// Create chat message
-	chatMsg := &Message{
-		ID:        generateMessageID(),
-		Type:      "chat_message",
+	chatMsg := &model.Message{
 		Content:   msg.Content,
 		UserID:    c.User.ID,
 		Username:  c.User.Username,
 		RoomID:    msg.RoomID,
-		Timestamp: time.Now(),
+		CreatedAt: time.Now(),
+	}
+
+	// Persist to DB
+	if err := clientsManager.MessageRepo.CreateMessage(chatMsg); err != nil {
+		Log.Error("Failed to save message from %s: %v", c.User.Username, err)
+		c.SendError("Failed to send message")
+		return
 	}
 
 	// Broadcast to room or general chat
 	broadcastMsg := BroadcastMessage{
-		Message:     chatMsg,
+		Message: &Message{
+			ID:        fmt.Sprintf("%d", chatMsg.ID),
+			Type:      "chat_message",
+			Content:   chatMsg.Content,
+			UserID:    chatMsg.UserID,
+			Username:  chatMsg.Username,
+			RoomID:    chatMsg.RoomID,
+			Timestamp: chatMsg.CreatedAt,
+		},
 		RoomID:      msg.RoomID,
-		ExcludeUser: "", // Include sender in chat messages
+		ExcludeUser: "",
 		MessageType: "broadcast_room",
 	}
 
@@ -232,37 +246,56 @@ func (c *Client) handleLeaveRoom(msg IncomingMessage, clientsManager *ClientMana
 // handlePrivateMessage processes private messages between users
 func (c *Client) handlePrivateMessage(msg IncomingMessage, clientsManager *ClientManager) {
 	if msg.RecipientUsername == "" {
+		Log.Error("Received private message with no recipient username")
 		c.SendError("Recipient username cannot be empty")
 		return
 	}
 
 	if msg.Content == "" {
+		Log.Error("Received private message with no content")
 		c.SendError("Message content cannot be empty")
 		return
 	}
 
-	// Create private message
-	privateMsg := &Message{
-		ID:                generateMessageID(),
-		Type:              "private_message",
-		Content:           msg.Content,
-		UserID:            c.User.ID,
-		Username:          c.User.Username,
-		RecipientUsername: msg.RecipientUsername,
-		Timestamp:         time.Now(),
+	recipient, err := clientsManager.UserRepo.GetUserByUsername(msg.RecipientUsername)
+	if err != nil || recipient == nil {
+		Log.Error("Failed to get user %s", msg.RecipientUsername)
+		c.SendError("Recipient not found")
+		return
 	}
 
-	// Send to specific user
-	broadcastMsg := BroadcastMessage{
-		Message:        privateMsg,
+	privateMsg := &model.PrivateMessage{
+		Content:     msg.Content,
+		Type:        "text",
+		SenderID:    c.User.ID,
+		RecipientID: recipient.ID,
+		CreatedAt:   time.Now(),
+	}
+
+	if err := clientsManager.MessageRepo.CreatePrivateMessage(privateMsg); err != nil {
+		Log.Error("Failed to save private message from %s: %v", c.User.Username, err)
+		c.SendError("Failed to send message")
+		return
+	}
+
+	wsMsg := &Message{
+		ID:        fmt.Sprintf("%d", privateMsg.ID),
+		Type:      "private_message",
+		Content:   privateMsg.Content,
+		UserID:    privateMsg.SenderID,
+		Username:  c.User.Username,
+		Timestamp: privateMsg.CreatedAt,
+	}
+
+	// Send to recipient
+	clientsManager.Broadcast <- BroadcastMessage{
+		Message:        wsMsg,
 		TargetUsername: msg.RecipientUsername,
 		MessageType:    "private_message",
 	}
 
-	clientsManager.Broadcast <- broadcastMsg
-
 	// Send copy to sender
-	c.SendMessage(privateMsg)
+	c.SendMessage(wsMsg)
 }
 
 // handleTyping processes typing indicators

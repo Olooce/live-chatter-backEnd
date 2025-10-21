@@ -69,23 +69,22 @@ func (r *roomRepository) GetUserRooms(userID uint) ([]model.Room, error) {
 }
 
 func (r *roomRepository) AddUserToRoom(roomID string, userID uint, role string) error {
-	// Check if user is already in the room and hasn't left
-	var userRoom model.UserRoom
-	err := r.db.Where("room_id = ? AND user_id = ? AND left_at IS NULL", roomID, userID).First(&userRoom).Error
+	var existingUserRoom model.UserRoom
+	err := r.db.Where("room_id = ? AND user_id = ? AND left_at IS NULL", roomID, userID).First(&existingUserRoom).Error
 
 	if err == nil {
-		return errors.New("user already in room")
+		return nil
 	}
 
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
 	}
 
-	// Check if user was previously in the room but left
-	err = r.db.Where("room_id = ? AND user_id = ?", roomID, userID).First(&userRoom).Error
+	var previousUserRoom model.UserRoom
+	err = r.db.Where("room_id = ? AND user_id = ?", roomID, userID).First(&previousUserRoom).Error
+
 	if err == nil {
-		// User was previously in the room, update the record
-		return r.db.Model(&userRoom).Updates(map[string]interface{}{
+		return r.db.Model(&previousUserRoom).Updates(map[string]interface{}{
 			"role":      role,
 			"joined_at": time.Now(),
 			"left_at":   nil,
@@ -96,8 +95,7 @@ func (r *roomRepository) AddUserToRoom(roomID string, userID uint, role string) 
 		return err
 	}
 
-	// Add user to room for the first time
-	userRoom = model.UserRoom{
+	userRoom := model.UserRoom{
 		UserID:   userID,
 		RoomID:   roomID,
 		Role:     role,

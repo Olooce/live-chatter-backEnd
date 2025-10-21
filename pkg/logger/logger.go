@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
@@ -17,14 +19,8 @@ var (
 	debugLog  *log.Logger
 	logMutex  = &sync.Mutex{}
 	debugMode = false
-
-	infoFile  *os.File
-	warnFile  *os.File
-	errorFile *os.File
-	debugFile *os.File
 )
 
-// SetupLogging initializes loggers
 func SetupLogging(logDir string, enableDebug bool) {
 	debugMode = enableDebug
 
@@ -32,42 +28,50 @@ func SetupLogging(logDir string, enableDebug bool) {
 		log.Fatalf("Failed to create log directory: %v", err)
 	}
 
-	infoFile = openLogFile(filepath.Join(logDir, "info.log"))
-	warnFile = openLogFile(filepath.Join(logDir, "warn.log"))
-	errorFile = openLogFile(filepath.Join(logDir, "error.log"))
+	newRotateWriter := func(filename string) io.Writer {
+		return &lumberjack.Logger{
+			Filename:   filepath.Join(logDir, filename),
+			MaxSize:    10,
+			MaxBackups: 5,
+			MaxAge:     28,
+			Compress:   true,
+		}
+	}
 
-	infoWriter := io.MultiWriter(os.Stdout, infoFile)
-	warnWriter := io.MultiWriter(os.Stdout, warnFile)
-	errorWriter := io.MultiWriter(os.Stderr, errorFile)
+	infoWriter := io.MultiWriter(os.Stdout, newRotateWriter("info.log"))
+	warnWriter := io.MultiWriter(os.Stdout, newRotateWriter("warn.log"))
+	errorWriter := io.MultiWriter(os.Stderr, newRotateWriter("error.log"))
 
 	infoLog = log.New(infoWriter, "INFO: ", log.Ldate|log.Ltime)
 	warnLog = log.New(warnWriter, "WARNING: ", log.Ldate|log.Ltime)
 	errorLog = log.New(errorWriter, "ERROR: ", log.Ldate|log.Ltime)
 
 	if debugMode {
-		debugFile = openLogFile(filepath.Join(logDir, "debug.log"))
-		debugWriter := io.MultiWriter(os.Stdout, debugFile)
-		debugLog = log.New(debugWriter, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
+		debugWriter := io.MultiWriter(os.Stdout, newRotateWriter("debug.log"))
+		debugLog = log.New(debugWriter, "DEBUG: ", log.Ldate|log.Ltime)
 	}
 
-	// Override Go's default log
 	log.SetOutput(infoWriter)
 }
 
-func openLogFile(path string) *os.File {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("Failed to open log file: %v", err)
-	}
-	return file
-}
-
-func getCallerInfo() string {
-	pc, _, _, ok := runtime.Caller(3)
+func getFuncName(skip int) string {
+	pc, _, _, ok := runtime.Caller(skip)
 	if !ok {
 		return "unknown"
 	}
-	return runtime.FuncForPC(pc).Name()
+	fn := runtime.FuncForPC(pc)
+	if fn == nil {
+		return "unknown"
+	}
+	return filepath.Base(fn.Name())
+}
+
+func getFileLine(skip int) string {
+	_, file, line, ok := runtime.Caller(skip)
+	if !ok {
+		return "unknown:0"
+	}
+	return filepath.Base(file) + ":" + fmt.Sprint(line)
 }
 
 func Log(level string, format string, v ...interface{}) {
@@ -75,7 +79,13 @@ func Log(level string, format string, v ...interface{}) {
 	defer logMutex.Unlock()
 
 	message := fmt.Sprintf(format, v...)
-	logEntry := fmt.Sprintf("[%s]: %s", getCallerInfo(), message)
+	caller := getFuncName(3)
+
+	if level == "DEBUG" && debugMode {
+		caller = caller + " " + getFileLine(3)
+	}
+
+	logEntry := "[" + caller + "] " + message
 
 	switch level {
 	case "INFO":
@@ -85,7 +95,7 @@ func Log(level string, format string, v ...interface{}) {
 	case "ERROR":
 		errorLog.Println(logEntry)
 	case "DEBUG":
-		if debugMode && debugLog != nil {
+		if debugLog != nil && debugMode {
 			debugLog.Println(logEntry)
 		}
 	default:
@@ -93,43 +103,11 @@ func Log(level string, format string, v ...interface{}) {
 	}
 }
 
-// FlushLogs ensures that all log files flush their buffered data to disk.
-func FlushLogs() {
-	if infoFile != nil {
-		err := infoFile.Sync()
-		if err != nil {
-			return
-		}
-	}
-	if warnFile != nil {
-		err := warnFile.Sync()
-		if err != nil {
-			return
-		}
-	}
-	if errorFile != nil {
-		err := errorFile.Sync()
-		if err != nil {
-			return
-		}
-	}
-	if debugFile != nil {
-		err := debugFile.Sync()
-		if err != nil {
-			return
-		}
-	}
-}
-
-func Info(format string, v ...interface{}) {
-	Log("INFO", format, v...)
-}
-func Warn(format string, v ...interface{}) {
-	Log("WARNING", format, v...)
-}
-func Error(format string, v ...interface{}) {
-	Log("ERROR", format, v...)
-}
+func Info(format string, v ...interface{})  { Log("INFO", format, v...) }
+func Warn(format string, v ...interface{})  { Log("WARNING", format, v...) }
+func Error(format string, v ...interface{}) { Log("ERROR", format, v...) }
 func Debug(format string, v ...interface{}) {
-	Log("DEBUG", format, v...)
+	if debugMode {
+		Log("DEBUG", format, v...)
+	}
 }

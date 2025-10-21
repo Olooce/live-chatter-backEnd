@@ -54,7 +54,7 @@ func WebSocket(res http.ResponseWriter, req *http.Request, clientsManager *pkg.C
 
 	// Create user info
 	user := &model.User{
-		ID:       uint(userID),
+		ID:       userID,
 		Username: username,
 		Email:    email,
 	}
