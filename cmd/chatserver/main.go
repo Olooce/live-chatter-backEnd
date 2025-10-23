@@ -112,8 +112,9 @@ func autoMigrate() error {
 		&model.Message{},
 		&model.UserRoom{},
 		&model.PrivateMessage{},
-		&model.UserSession{},
-		&model.ActivityLog{})
+		//&model.UserSession{},
+		//&model.ActivityLog{}
+	)
 }
 
 func setupRoutes(router *gin.Engine, clientsManager *pkg.ClientManager, userRepo repository.UserRepository) {
