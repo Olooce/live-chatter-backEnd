@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<API REQUEST_DUMP="true">
+    <CONTEXT>
+        <PORT>8080</PORT>
+        <HOST>0.0.0.0</HOST>
+        <PATH>/</PATH>
+        <TIME_ZONE>Africa/Nairobi</TIME_ZONE>
+        <ENABLE_BASIC_AUTH>true</ENABLE_BASIC_AUTH>
+        <MODE>debug</MODE>
+        <TRUSTED_PROXIES>
+            <PROXY>127.0.0.1</PROXY>
+            <PROXY>192.168.1.100</PROXY>
+        </TRUSTED_PROXIES>
+    </CONTEXT>
+
+    <AUTHENTICATION MULTIPLE_SAME_USER_SESSIONS="true">
+        <ENABLE_TOKEN_AUTH>true</ENABLE_TOKEN_AUTH>
+        <SESSION_TIMEOUT TYPE="ACCESS" TIME-UNIT="MINUTES">36000</SESSION_TIMEOUT>
+        <SESSION_TIMEOUT TYPE="REFRESH" TIME-UNIT="MINUTES">48000</SESSION_TIMEOUT>
+        <SECRET_KEY TYPE="ACCESS">***</SECRET_KEY>
+        <SECRET_KEY TYPE="REFRESH">***</SECRET_KEY>
+    </AUTHENTICATION>
+
+    <PAGINATION>
+        <PAGE_SIZE>10</PAGE_SIZE>
+    </PAGINATION>
+
+    <DB>
+        <INITIALIZE>false</INITIALIZE>
+        <SERVER>PostgreSQL</SERVER>
+        <HOST>localhost</HOST>
+        <PORT>5432</PORT>
+        <DRIVER>postgres</DRIVER>
+        <SSL_MODE>disable</SSL_MODE>
+        <NAMES LIVECHAT="live_chat_db"/>
+        <USERNAME>live_chat</USERNAME>
+        <PASSWORD TYPE='UNENCRYPTED'>super_duper_secret_unencrypted_password</PASSWORD>
+        <POOL>
+            <MAX_OPEN_CONNS>500</MAX_OPEN_CONNS>
+            <MAX_IDLE_CONNS>5</MAX_IDLE_CONNS>
+            <CONN_MAX_LIFETIME>600</CONN_MAX_LIFETIME>
+        </POOL>
+    </DB>
+</API>
