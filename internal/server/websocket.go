@@ -22,7 +22,6 @@ var upgrader = websocket.Upgrader{
 // WebSocket upgrades an HTTP request to a WebSocket connection
 // and manages the client lifecycle with the given ClientManager.
 func WebSocket(res http.ResponseWriter, req *http.Request, clientsManager *pkg.ClientManager) {
-	// Get user information from context (set by WebSocketAuthMiddleware)
 	userID, ok := req.Context().Value("user_id").(uint)
 	if !ok {
 		Log.Error("User ID not found in WebSocket request context")

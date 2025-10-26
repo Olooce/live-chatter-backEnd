@@ -16,15 +16,16 @@ func RequestDumpMiddleware() gin.HandlerFunc {
 		}
 		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
-		Log.Info(
-			"[Request]\n"+
-				"\tMethod: %s\n"+
-				"\tURL: %s\n"+
-				"\tHeaders: %v\n"+
-				"\tBody: %s",
+		Log.Info("\n\t[Request]\n"+
+			"\tMethod: %s\n"+
+			"\tURL: %s\n"+
+			"\tHeaders: %v\n"+
+			"\tParams: %v\n"+
+			"\tBody: %s",
 			c.Request.Method,
 			c.Request.URL.String(),
 			c.Request.Header,
+			c.Params,
 			string(bodyBytes),
 		)
 
