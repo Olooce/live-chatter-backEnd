@@ -25,6 +25,7 @@ type APIConfig struct {
 	Authentication AuthenticationConfig `xml:"AUTHENTICATION"`
 	Pagination     PaginationConfig     `xml:"PAGINATION"`
 	DB             DBConfig             `xml:"DB"`
+	Logging        LoggingConfig        `xml:"LOGGING"`
 }
 
 // ContextConfig holds basic server settings.
@@ -50,6 +51,18 @@ type AuthenticationConfig struct {
 	SessionTimeouts          map[string]int    `xml:"SESSION_TIMEOUT"`
 	SecretKeys               map[string]string `xml:"SECRET_KEY"`
 	TimeUnits                map[string]string
+}
+
+// LoggingConfig holds logging configuration.
+type LoggingConfig struct {
+	LogDir struct {
+		Path     string `xml:",chardata"`
+		Relative bool   `xml:"RELATIVE,attr"`
+	} `xml:"LOG_DIR"`
+	MaxSizeMB    int  `xml:"MAX_SIZE_MB"`
+	MaxBackups   int  `xml:"MAX_BACKUPS"`
+	MaxAgeDays   int  `xml:"MAX_AGE_DAYS"`
+	CompressLogs bool `xml:"COMPRESS_LOGS"`
 }
 
 // UnmarshalXML customizes XML parsing for AuthenticationConfig.

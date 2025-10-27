@@ -34,7 +34,17 @@ func main() {
 	cfg := loadConfig("config.xml")
 
 	debugMode := cfg.Context.Mode != gin.ReleaseMode
-	Log.SetupLogging("logs", debugMode)
+	Log.SetupLogging(Log.LoggingOptions{
+		LogDir: struct {
+			Path     string
+			Relative bool
+		}(cfg.Logging.LogDir),
+		EnableDebug:  debugMode,
+		MaxSizeMB:    cfg.Logging.MaxSizeMB,
+		MaxBackups:   cfg.Logging.MaxBackups,
+		MaxAgeDays:   cfg.Logging.MaxAgeDays,
+		CompressLogs: cfg.Logging.CompressLogs,
+	})
 
 	initDatabase(cfg)
 	initAuth(cfg)
