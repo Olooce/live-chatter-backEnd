@@ -34,7 +34,26 @@ func main() {
 	cfg := loadConfig("config.xml")
 
 	debugMode := cfg.Context.Mode != gin.ReleaseMode
-	Log.SetupLogging("logs", debugMode)
+	if cfg.Logging.MaxSizeMB <= 0 {
+		Log.Error("Invalid MAX_SIZE_MB in config, must be > 0")
+		os.Exit(1)
+	}
+	if cfg.Logging.MaxBackups < 0 || cfg.Logging.MaxAgeDays < 0 {
+		Log.Error("Invalid MAX_BACKUPS or MAX_AGE_DAYS in config, must be >= 0")
+		os.Exit(1)
+	}
+
+	Log.SetupLogging(Log.LoggingOptions{
+		LogDir: struct {
+			Path     string
+			Relative bool
+		}(cfg.Logging.LogDir),
+		EnableDebug:  debugMode,
+		MaxSizeMB:    cfg.Logging.MaxSizeMB,
+		MaxBackups:   cfg.Logging.MaxBackups,
+		MaxAgeDays:   cfg.Logging.MaxAgeDays,
+		CompressLogs: cfg.Logging.CompressLogs,
+	})
 
 	initDatabase(cfg)
 	initAuth(cfg)
@@ -177,6 +196,7 @@ func runServer(cfg *config.APIConfig, router *gin.Engine) {
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			Log.Error("Server failed: %v", err)
+			os.Exit(1)
 		}
 	}()
 

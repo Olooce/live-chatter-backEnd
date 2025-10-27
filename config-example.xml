@@ -41,4 +41,12 @@
             <CONN_MAX_LIFETIME>600</CONN_MAX_LIFETIME>
         </POOL>
     </DB>
+
+    <LOGGING>
+        <LOG_DIR RELATIVE="true">/logs</LOG_DIR>
+        <MAX_SIZE_MB>10</MAX_SIZE_MB>
+        <MAX_BACKUPS>5</MAX_BACKUPS>
+        <MAX_AGE_DAYS>28</MAX_AGE_DAYS>
+        <COMPRESS_LOGS>true</COMPRESS_LOGS>
+    </LOGGING>
 </API>

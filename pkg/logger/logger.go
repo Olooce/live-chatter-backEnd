@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -21,8 +22,39 @@ var (
 	debugMode = false
 )
 
-func SetupLogging(logDir string, enableDebug bool) {
-	debugMode = enableDebug
+type LoggingOptions struct {
+	LogDir struct {
+		Path     string
+		Relative bool
+	}
+	EnableDebug  bool
+	MaxSizeMB    int
+	MaxBackups   int
+	MaxAgeDays   int
+	CompressLogs bool
+}
+
+func SetupLogging(cfg LoggingOptions) {
+	logDir := cfg.LogDir.Path
+
+	if cfg.LogDir.Relative {
+		// Ensure path is relative to working directory
+		logDir = strings.TrimPrefix(logDir, string(os.PathSeparator))
+		cwd, err := os.Getwd()
+		if err != nil {
+			log.Fatalf("Failed to get working directory: %v", err)
+		}
+		logDir = filepath.Join(cwd, logDir)
+	} else if !filepath.IsAbs(logDir) {
+		// If not explicitly relative but not absolute, make it absolute
+		cwd, err := os.Getwd()
+		if err != nil {
+			log.Fatalf("Failed to get working directory: %v", err)
+		}
+		logDir = filepath.Join(cwd, logDir)
+	}
+
+	debugMode = cfg.EnableDebug
 
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		log.Fatalf("Failed to create log directory: %v", err)
@@ -31,10 +63,10 @@ func SetupLogging(logDir string, enableDebug bool) {
 	newRotateWriter := func(filename string) io.Writer {
 		return &lumberjack.Logger{
 			Filename:   filepath.Join(logDir, filename),
-			MaxSize:    10,
-			MaxBackups: 5,
-			MaxAge:     28,
-			Compress:   true,
+			MaxSize:    cfg.MaxSizeMB,
+			MaxBackups: cfg.MaxBackups,
+			MaxAge:     cfg.MaxAgeDays,
+			Compress:   cfg.CompressLogs,
 		}
 	}
 
@@ -46,7 +78,7 @@ func SetupLogging(logDir string, enableDebug bool) {
 	warnLog = log.New(warnWriter, "WARNING: ", log.Ldate|log.Ltime)
 	errorLog = log.New(errorWriter, "ERROR: ", log.Ldate|log.Ltime)
 
-	if debugMode {
+	if cfg.EnableDebug {
 		debugWriter := io.MultiWriter(os.Stdout, newRotateWriter("debug.log"))
 		debugLog = log.New(debugWriter, "DEBUG: ", log.Ldate|log.Ltime)
 	}
