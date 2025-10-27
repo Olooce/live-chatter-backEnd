@@ -187,6 +187,7 @@ func runServer(cfg *config.APIConfig, router *gin.Engine) {
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			Log.Error("Server failed: %v", err)
+			os.Exit(1)
 		}
 	}()
 
