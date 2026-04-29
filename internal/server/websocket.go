@@ -1,6 +1,7 @@
 package server
 
 import (
+	"live-chatter/internal/repository"
 	"live-chatter/pkg"
 	"live-chatter/pkg/model"
 	"net/http"
@@ -21,7 +22,7 @@ var upgrader = websocket.Upgrader{
 
 // WebSocket upgrades an HTTP request to a WebSocket connection
 // and manages the client lifecycle with the given ClientManager.
-func WebSocket(res http.ResponseWriter, req *http.Request, clientsManager *pkg.ClientManager) {
+func WebSocket(res http.ResponseWriter, req *http.Request, clientsManager *pkg.ClientManager, userRepo repository.UserRepository) {
 	userID, ok := req.Context().Value("user_id").(uint)
 	if !ok {
 		Log.Error("User ID not found in WebSocket request context")
@@ -70,6 +71,11 @@ func WebSocket(res http.ResponseWriter, req *http.Request, clientsManager *pkg.C
 
 	// Register the client with the client manager to start tracking it
 	clientsManager.Register <- client
+
+	err = userRepo.UpdateUserStatus(userID, "online")
+	if err != nil {
+		return
+	}
 
 	// Start goroutines to handle incoming and outgoing messages
 	go client.Read(clientsManager)

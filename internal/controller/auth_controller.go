@@ -3,6 +3,7 @@ package controller
 import (
 	"bytes"
 	"io"
+	"live-chatter/internal/repository"
 	"live-chatter/internal/service"
 	"live-chatter/pkg/model"
 	"net/http"
@@ -14,10 +15,14 @@ import (
 
 type AuthController struct {
 	AuthService service.AuthService
+	UserRepo    repository.UserRepository
 }
 
-func NewAuthController(authService service.AuthService) *AuthController {
-	return &AuthController{AuthService: authService}
+func NewAuthController(authService service.AuthService, userRepo repository.UserRepository) *AuthController {
+	return &AuthController{
+		AuthService: authService,
+		UserRepo:    userRepo,
+	}
 }
 
 type registerRequest struct {
@@ -109,4 +114,20 @@ func (ac *AuthController) Refresh(c *gin.Context) {
 
 	Log.Info("[Refresh] Success: %+v", newTokens)
 	c.JSON(http.StatusOK, newTokens)
+}
+
+func (ac *AuthController) Logout(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	err := ac.UserRepo.UpdateUserStatus(userID.(uint), "offline")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update status"})
+		return
+	}
+	//TODO: Invalidate tokens
+	c.JSON(http.StatusOK, gin.H{"message": "Logged out"})
 }

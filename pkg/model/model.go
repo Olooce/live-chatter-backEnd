@@ -10,7 +10,7 @@ import (
 type User struct {
 	ID        uint           `json:"id" gorm:"primaryKey"`
 	Username  string         `json:"username" gorm:"uniqueIndex;not null"`
-	Email     string         `json:"email" gorm:"uniqueIndex;not null"`
+	Email     string         `json:"email" gorm:"uniqueIndex"`
 	Password  string         `json:"password,omitempty" gorm:"not null"` // Exclude from JSON responses
 	FirstName string         `json:"first_name"`
 	LastName  string         `json:"last_name"`

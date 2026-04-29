@@ -143,12 +143,12 @@ func setupRoutes(router *gin.Engine, clientsManager *pkg.ClientManager, userRepo
 	authService := service.NewAuthService(userRepo)
 	chatService := service.NewChatService(messageRepo, roomRepo, userRepo, clientsManager)
 
-	authController := controller.NewAuthController(authService)
+	authController := controller.NewAuthController(authService, userRepo)
 	chatController := controller.NewChatController(chatService)
 
 	// WebSocket endpoint
 	router.GET("/ws", middleware.WebSocketAuthMiddleware(), func(c *gin.Context) {
-		server.WebSocket(c.Writer, c.Request, clientsManager)
+		server.WebSocket(c.Writer, c.Request, clientsManager, userRepo)
 	})
 
 	// API routes
@@ -160,6 +160,7 @@ func setupRoutes(router *gin.Engine, clientsManager *pkg.ClientManager, userRepo
 			auth.POST("/register", authController.Register)
 			auth.POST("/login", authController.Login)
 			auth.POST("/refresh", authController.Refresh)
+			auth.POST("/logout", authController.Logout)
 		}
 
 		// Chat routes
@@ -171,6 +172,7 @@ func setupRoutes(router *gin.Engine, clientsManager *pkg.ClientManager, userRepo
 			chat.GET("/rooms/:roomId/messages", chatController.GetRoomMessages)
 			chat.POST("/rooms/:roomId/join", chatController.JoinRoom)
 			chat.POST("/rooms/:roomId/leave", chatController.LeaveRoom)
+			chat.GET("/rooms/user", chatController.GetUserRooms)
 			chat.GET("/users/online", chatController.GetOnlineUsers)
 		}
 	}

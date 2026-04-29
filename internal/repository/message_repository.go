@@ -38,13 +38,15 @@ func (r *messageRepository) CreatePrivateMessage(message *model.PrivateMessage) 
 func (r *messageRepository) GetMessagesByRoomID(roomID string, limit, offset int, before *time.Time) ([]model.Message, error) {
 	var messages []model.Message
 
-	query := r.db.Preload("User").Where("room_id = ? AND deleted_at IS NULL", roomID)
+	query := r.db.Preload("User").
+		Where("room_id = ? AND deleted_at IS NULL", roomID)
 
 	if before != nil {
 		query = query.Where("created_at < ?", before)
 	}
 
-	err := query.Order("created_at DESC").
+	err := query.
+		Order("created_at ASC").
 		Limit(limit).
 		Offset(offset).
 		Find(&messages).Error
